@@ -1,0 +1,176 @@
+mql5
+//+------------------------------------------------------------------+
+//|                                                   Desi Fx Machine|
+//|                                https://www.forexroboteasy.com     |
+//|                                          Developed by Forex Robot Easy Team |
+//+------------------------------------------------------------------+
+#property copyright '© 2022, Forex Robot Easy Team'
+#property link      'https://www.forexroboteasy.com'
+#property version   '1.0'
+
+// Global variables
+input double StopLossPercentage = 1.0; // Stop loss percentage
+input double TakeProfitPercentage = 2.0; // Take profit percentage
+input int Slippage = 3; // Slippage in pips
+
+//+------------------------------------------------------------------+
+//| Expert initialization function                                   |
+//+------------------------------------------------------------------+
+int OnInit()
+{
+    // Set the desired currency pairs
+    string[] currencyPairs = {'GBPCAD', 'AUDCAD', 'NZDCAD'};
+    
+    // Loop through each currency pair
+    for (int i = 0; i < ArraySize(currencyPairs); i++)
+    {
+        // Open the chart for the current currency pair
+        ChartOpen(currencyPairs[i], PERIOD_M15);
+        
+        // Attach the expert advisor to the chart
+        AttachEA(currencyPairs[i]);
+    }
+    
+    return INIT_SUCCEEDED;
+}
+
+//+------------------------------------------------------------------+
+//| Expert deinitialization function                                 |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+{
+    // Detach the expert advisor from all charts
+    for (int i = 0; i < ChartObjectsTotal(); i++)
+    {
+        ChartClose(ChartID(i));
+        ChartNavigate(0, CHART_BEGIN);
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Expert tick function                                             |
+//+------------------------------------------------------------------+
+void OnTick()
+{
+    // Get the current chart symbol
+    string symbol = Symbol();
+    
+    // Check if the current chart is attached to the expert advisor
+    if (IsExpertEnabled(symbol))
+    {
+        // Evaluate market conditions and indicators
+        if (MarketConditionsMet(symbol))
+        {
+            // Place pending orders
+            PlacePendingOrders(symbol);
+        }
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Check market conditions and indicators                           |
+//+------------------------------------------------------------------+
+bool MarketConditionsMet(const string symbol)
+{
+    // Implement your market condition evaluation logic here
+    // Return true if conditions are met, false otherwise
+    
+    return true; // For demonstration purposes, always return true
+}
+
+//+------------------------------------------------------------------+
+//| Place pending orders                                             |
+//+------------------------------------------------------------------+
+void PlacePendingOrders(const string symbol)
+{
+    // Implement your pending order placement logic here
+    // Use OrderSend() function to place pending orders
+    
+    // Example: Place a buy stop order
+    double price = Ask + 10 * Point;
+    int slippage = Slippage;
+    double stopLoss = price - (StopLossPercentage / 100) * price;
+    double takeProfit = price + (TakeProfitPercentage / 100) * price;
+    
+    int ticket = OrderSend(symbol, OP_BUYSTOP, 0.1, price, slippage, stopLoss, takeProfit);
+    
+    if (ticket > 0)
+    {
+        Print('Buy stop order placed successfully for ', symbol);
+    }
+    else
+    {
+        Print('Failed to place buy stop order for ', symbol, ' Error code: ', GetLastError());
+    }
+    
+    // Example: Place a sell stop order
+    price = Bid - 10 * Point;
+    stopLoss = price + (StopLossPercentage / 100) * price;
+    takeProfit = price - (TakeProfitPercentage / 100) * price;
+    
+    ticket = OrderSend(symbol, OP_SELLSTOP, 0.1, price, slippage, stopLoss, takeProfit);
+    
+    if (ticket > 0)
+    {
+        Print('Sell stop order placed successfully for ', symbol);
+    }
+    else
+    {
+        Print('Failed to place sell stop order for ', symbol, ' Error code: ', GetLastError());
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Check if expert advisor is enabled for the symbol                |
+//+------------------------------------------------------------------+
+bool IsExpertEnabled(const string symbol)
+{
+    // Check if expert advisor is enabled for the current chart
+    int expertCount = ExpertCount(symbol);
+    
+    if (expertCount > 0)
+    {
+        return true;
+    }
+    
+    return false;
+}
+
+//+------------------------------------------------------------------+
+//| Attach expert advisor to the chart                               |
+//+------------------------------------------------------------------+
+void AttachEA(const string symbol)
+{
+    // Attach expert advisor to the current chart
+    int expertHandle = ExpertCreate(symbol, 'Desi Fx Machine');
+    
+    if (expertHandle != INVALID_HANDLE)
+    {
+        ExpertSetProperty(expertHandle, EXPERT_MAGIC, 123456);
+        ExpertEnable(expertHandle);
+    }
+}
+
+//+------------------------------------------------------------------+
+//| Close all orders on the chart                                    |
+//+------------------------------------------------------------------+
+void CloseAllOrders(const string symbol)
+{
+    // Close all orders on the current chart
+    for (int i = OrdersTotal() - 1; i >= 0; i--)
+    {
+        if (OrderSelect(i, SELECT_BY_POS, MODE_TRADES) && OrderSymbol() == symbol)
+        {
+            bool result = OrderClose(OrderTicket(), OrderLots(), OrderClosePrice(), Slippage);
+            
+            if (result)
+            {
+                Print('Order closed successfully: ', OrderType(), ' ', OrderLots(), ' lots @ ', OrderClosePrice());
+            }
+            else
+            {
+                Print('Failed to close order: ', OrderType(), ' ', OrderLots(), ' lots @ ', OrderClosePrice(), ' Error code: ', GetLastError());
+            }
+        }
+    }
+}
